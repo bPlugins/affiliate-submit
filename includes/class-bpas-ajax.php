@@ -22,6 +22,7 @@ class Ajax {
 		add_action( 'wp_ajax_bpas_add_affiliate', [ $this, 'add_affiliate' ] );
 		add_action( 'wp_ajax_bpas_test_connection', [ $this, 'test_connection' ] );
 		add_action( 'wp_ajax_bpas_clear_sync', [ $this, 'clear_sync' ] );
+		// add_action( 'wp_ajax_bpas_trigger_webhook', [ $this, 'trigger_webhook_test' ] );
 	}
 
 	/**
@@ -136,6 +137,65 @@ class Ajax {
 			wp_send_json_error( $result->get_error_message() );
 		}
 
+		if ( ! is_wp_error( $result ) ) {
+			$this->trigger_webhook( $name, $email );
+		}
+
 		wp_send_json_success( 'Affiliate added successfully!' );
+	}
+
+	/**
+	 * Trigger custom webhook
+	 *
+	 * @param string $name  Full name.
+	 * @param string $email Email address.
+	 */
+	private function trigger_webhook( $name, $email ) {
+		$webhook_url = 'https://integrations-api.swipeone.com/webhooks/apps/generic-webhooks/694b6a636397f9ae8a38c2b7';
+		
+		// Extract first name
+		$name_parts = explode( ' ', trim( $name ) );
+		$first_name = $name_parts[0];
+
+		$body = [
+			'first_name' => $first_name,
+			'email'      => $email,
+			'tags'       => 'affiliate',
+		];
+
+		$response = wp_remote_post( $webhook_url, [
+			'method'      => 'POST',
+			'timeout'     => 45,
+			'redirection' => 5,
+			'httpversion' => '1.0',
+			'blocking'    => true,
+			'headers'     => [
+				'Content-Type' => 'application/json',
+			],
+			'body'        => wp_json_encode( $body ),
+			'cookies'     => [],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			error_log( 'BPAS Webhook Error: ' . $response->get_error_message() );
+		} else {
+			error_log( 'BPAS Webhook Success: ' . wp_remote_retrieve_body( $response ) );
+		}
+	}
+
+	/**
+	 * Test webhook trigger (for debugging)
+	 */
+	public function trigger_webhook_test() {
+		check_ajax_referer( 'bpas_ajax_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Permission denied' );
+		}
+
+		$name  = isset( $_POST['name'] ) ? sanitize_text_field( $_POST['name'] ) : 'Test User';
+		$email = isset( $_POST['email'] ) ? sanitize_email( $_POST['email'] ) : 'test@example.com';
+
+		$this->trigger_webhook( $name, $email );
+		wp_send_json_success( 'Webhook triggered!' );
 	}
 }
