@@ -25,13 +25,8 @@ define( 'BPAS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BPAS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 // Require Freemius SDK
-require_once BPAS_PLUGIN_DIR . 'freemius-php-sdk/freemius/Freemius.php';
-
-// Debug: Check where Freemius_Api is loaded from
-if ( class_exists( 'Freemius_Api' ) ) {
-	$reflector = new ReflectionClass( 'Freemius_Api' );
-	$version = defined( 'Freemius_Api_Base::VERSION' ) ? Freemius_Api_Base::VERSION : 'unknown';
-	error_log( 'BPAS Debug: Freemius_Api (v' . $version . ') loaded from ' . $reflector->getFileName() );
+if ( ! class_exists( 'Freemius_Api' ) ) {
+	require_once BPAS_PLUGIN_DIR . 'freemius-php-sdk/freemius/Freemius.php';
 }
 
 // Autoload classes
